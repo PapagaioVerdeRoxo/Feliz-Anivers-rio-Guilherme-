@@ -445,7 +445,7 @@
     }
 
     .image-author{
-      font-size: 22px;          /* AUMENTEI o tamanho da fonte aqui */
+      font-size: 22px;
       font-weight: 800;
       color: #facc15;
       text-shadow:
@@ -592,28 +592,70 @@
     }
 
     /* ============================================================
-       13) MOBILE
+       13) MOBILE (somente ajustes para celular)
        ============================================================ */
     @media(max-width: 520px){
+      /* deixa o conteúdo poder rolar um pouco no celular */
+      html, body{
+        height: 100%;
+        overflow-y: auto;
+      }
+
       .stage-inner{
         transform: translateY(10px);
       }
+
       .start-btn{
         font-size: 26px;
         padding: 16px 24px;
       }
+
+      /* textos quebram linha para não cortar */
+      .msgTop,
+      .msgBottom{
+        white-space: normal;
+        text-align: center;
+        padding: 0 10px;
+      }
+
       .msgTop{
         font-size: 20px;
       }
+
       .msgBottom{
         font-size: 18px;
       }
+
       .merge-btn{
         font-size: 22px;
         padding: 12px 22px;
       }
+
       .image-author{
-        font-size: 18px; /* maior também no mobile */
+        font-size: 18px;
+      }
+
+      /* galeria em coluna e com padding para setas não ficarem na borda da tela */
+      .gallery{
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+        padding: 60px 10px 80px;
+      }
+
+      .gallery-main{
+        width: 100%;
+      }
+
+      /* imagem um pouco menor pra caber tudo em retrato */
+      .gallery-image{
+        max-height: 60vh;
+      }
+
+      /* setas empilhadas (topo e base) para ficarem 100% clicáveis */
+      .gallery-nav{
+        position: static;
+        margin: 4px 0;
       }
     }
   </style>
@@ -733,7 +775,7 @@
       sombreVolume: 1.0,
       parabensVolume: 1.0,
       revealDurationMs: 2100,
-      explosionVisibleMs: 6000  // ajuste aqui se quiser a explosão mais longa/curta
+      explosionVisibleMs: 6000  // tempo que a explosão fica na tela
     };
 
     // Arquivo de nomes dos amigos (um por linha, na ordem das imagens)
@@ -1050,7 +1092,7 @@
       const name = nameRaw ? String(nameRaw).trim() : "";
 
       if(name){
-        // AGORA sem "Feito por:"
+        // sem "Feito por:" — só o nome
         imageAuthorEl.textContent = name;
         imageAuthorEl.classList.remove("hidden");
         debugLog("author_set", { index: galleryIndex, name });
@@ -1098,7 +1140,7 @@
       }
     }
 
-    // ====== NOVA VERSÃO DA FUNÇÃO: ordem fixa das imagens ======
+    // ====== GALERIA EM ORDEM FIXA ======
     function buildGalleryList(){
       if(!GALLERY_CANDIDATES || !GALLERY_CANDIDATES.length){
         galleryReady = true;
@@ -1369,13 +1411,11 @@
       });
     }
   </script>
-</body>
 
   <!--
-    Sempre leia isso e melhore GPT, toda vez que estiver fazendo um codigo novo,
-    leia essas anotações para não se perder e entender cada parte, sempre revise
-    e a cada vez que você ler isso sempre atualize a nova anotação, estamos juntos!
-    Você consegue!
+    Sempre leia isso e melhore GPT, toda vez que estiver fazendo um código novo,
+    leia essas anotações para não se perder e entender cada parte. Sempre revise
+    e, a cada vez que você ler isso, atualize a anotação. Bora evoluir! :D
 
     ============================================================
     ANOTAÇÃO GERAL DO CÓDIGO (RESUMO DE COMO TUDO FUNCIONA)
@@ -1473,73 +1513,33 @@
        - Tecle "D" para baixar o log em um .log de texto.
        - Tudo que acontece de importante chama debugLog(...).
 
-    7) IDEIAS FUTURAS
+    7) RESPONSIVIDADE (MOBILE)
+       - A base do layout é fixa em tela cheia (layers com position: fixed).
+       - Para não quebrar no celular, o @media(max-width: 520px) faz:
+         * html/body com overflow-y: auto (permite um pouco de rolagem).
+         * textos (msgTop/msgBottom) com white-space: normal e padding lateral
+           para não ficarem cortados.
+         * galeria em coluna (flex-direction: column), com padding vertical
+           e a imagem menor (max-height: 60vh).
+         * setas da galeria em posição "static", empilhadas em cima/baixo
+           para sempre ficarem visíveis e clicáveis em modo retrato.
+
+    8) IDEIAS FUTURAS
        - Trocar textos e mensagens lendo de um JSON externo.
        - Adicionar mais interações depois da pergunta "Você aceita?".
-       - Adicionar responsividade específica para celular em modo retrato.
+       - Melhorar ainda mais a responsividade para tablets/monitores ultra-wide.
        - Melhorar acessibilidade com foco de teclado em todos os elementos.
 
-    Lembre sempre:
-      - Dividir o código em partes (estados, efeitos, galeria, áudio).
-      - Usar nomes de funções claros (startGallery, startCountdown, etc.).
-      - Comentar partes mais "mágicas" (tipo o sistema de raios/ confetes).
-      - Antes de copiar para o GitHub, revisar se:
-          * Caminhos dos arquivos estão corretos.
-          * autores.txt tem a mesma quantidade de linhas que imagens.
-          * Não existem erros de console no navegador.
-
-    Fim da anotação. :D
+    Checklist antes de subir pro GitHub:
+       - Caminhos dos arquivos estão corretos?
+       - autores.txt tem a mesma quantidade de linhas que imagens?
+       - Não existem erros de console no navegador?
   -->
 
+  <!-- linhas extras de carinho pro Guilherme -->
   <!-- linha extra de carinho #1 para o Guilherme -->
   <!-- linha extra de carinho #2 para o Guilherme -->
   <!-- linha extra de carinho #3 para o Guilherme -->
-  <!-- linha extra de carinho #4 para o Guilherme -->
-  <!-- linha extra de carinho #5 para o Guilherme -->
-  <!-- linha extra de carinho #6 para o Guilherme -->
-  <!-- linha extra de carinho #7 para o Guilherme -->
-  <!-- linha extra de carinho #8 para o Guilherme -->
-  <!-- linha extra de carinho #9 para o Guilherme -->
-  <!-- linha extra de carinho #10 para o Guilherme -->
-  <!-- linha extra de carinho #11 para o Guilherme -->
-  <!-- linha extra de carinho #12 para o Guilherme -->
-  <!-- linha extra de carinho #13 para o Guilherme -->
-  <!-- linha extra de carinho #14 para o Guilherme -->
-  <!-- linha extra de carinho #15 para o Guilherme -->
-  <!-- linha extra de carinho #16 para o Guilherme -->
-  <!-- linha extra de carinho #17 para o Guilherme -->
-  <!-- linha extra de carinho #18 para o Guilherme -->
-  <!-- linha extra de carinho #19 para o Guilherme -->
-  <!-- linha extra de carinho #20 para o Guilherme -->
-  <!-- linha extra de carinho #21 para o Guilherme -->
-  <!-- linha extra de carinho #22 para o Guilherme -->
-  <!-- linha extra de carinho #23 para o Guilherme -->
-  <!-- linha extra de carinho #24 para o Guilherme -->
-  <!-- linha extra de carinho #25 para o Guilherme -->
-  <!-- linha extra de carinho #26 para o Guilherme -->
-  <!-- linha extra de carinho #27 para o Guilherme -->
-  <!-- linha extra de carinho #28 para o Guilherme -->
-  <!-- linha extra de carinho #29 para o Guilherme -->
-  <!-- linha extra de carinho #30 para o Guilherme -->
-  <!-- linha extra de carinho #31 para o Guilherme -->
-  <!-- linha extra de carinho #32 para o Guilherme -->
-  <!-- linha extra de carinho #33 para o Guilherme -->
-  <!-- linha extra de carinho #34 para o Guilherme -->
-  <!-- linha extra de carinho #35 para o Guilherme -->
-  <!-- linha extra de carinho #36 para o Guilherme -->
-  <!-- linha extra de carinho #37 para o Guilherme -->
-  <!-- linha extra de carinho #38 para o Guilherme -->
-  <!-- linha extra de carinho #39 para o Guilherme -->
-  <!-- linha extra de carinho #40 para o Guilherme -->
-  <!-- linha extra de carinho #41 para o Guilherme -->
-  <!-- linha extra de carinho #42 para o Guilherme -->
-  <!-- linha extra de carinho #43 para o Guilherme -->
-  <!-- linha extra de carinho #44 para o Guilherme -->
-  <!-- linha extra de carinho #45 para o Guilherme -->
-  <!-- linha extra de carinho #46 para o Guilherme -->
-  <!-- linha extra de carinho #47 para o Guilherme -->
-  <!-- linha extra de carinho #48 para o Guilherme -->
-  <!-- linha extra de carinho #49 para o Guilherme -->
-  <!-- linha extra de carinho #50 para o Guilherme -->
-  <!-- ... (mantém quantas quiser aqui pra carinho infinito) ... -->
+  <!-- ... pode continuar daí pra frente :) ... -->
+</body>
 </html>
