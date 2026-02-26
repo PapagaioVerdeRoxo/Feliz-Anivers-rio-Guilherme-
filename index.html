@@ -445,8 +445,8 @@
     }
 
     .image-author{
-      font-size: 16px;
-      font-weight: 700;
+      font-size: 22px;          /* AUMENTEI o tamanho da fonte aqui */
+      font-weight: 800;
       color: #facc15;
       text-shadow:
         0 0 6px rgba(0,0,0,0.85),
@@ -613,7 +613,7 @@
         padding: 12px 22px;
       }
       .image-author{
-        font-size: 14px;
+        font-size: 18px; /* maior também no mobile */
       }
     }
   </style>
@@ -741,14 +741,14 @@
     let authorNames = [];
     let authorsLoaded = false;
 
-    // Lista de candidatos da galeria.
+    // Lista de candidatos da galeria (ordem fixa: img1.jpg, img1.png, img2.jpg, img2.png, ...)
     const GALLERY_CANDIDATES = [];
     for(let i = 1; i <= 20; i++){
       GALLERY_CANDIDATES.push(`Imagens de Aniversário/img${i}.jpg`);
       GALLERY_CANDIDATES.push(`Imagens de Aniversário/img${i}.png`);
     }
 
-    const galleryImages = [];   // imagens válidas encontradas
+    const galleryImages = [];   // imagens válidas encontradas (ordem preservada)
     let galleryReady = false;   // se a varredura já terminou
     let galleryStartQueued = false;
 
@@ -1050,7 +1050,8 @@
       const name = nameRaw ? String(nameRaw).trim() : "";
 
       if(name){
-        imageAuthorEl.textContent = "Feito por: " + name;
+        // AGORA sem "Feito por:"
+        imageAuthorEl.textContent = name;
         imageAuthorEl.classList.remove("hidden");
         debugLog("author_set", { index: galleryIndex, name });
       }else{
@@ -1097,6 +1098,7 @@
       }
     }
 
+    // ====== NOVA VERSÃO DA FUNÇÃO: ordem fixa das imagens ======
     function buildGalleryList(){
       if(!GALLERY_CANDIDATES || !GALLERY_CANDIDATES.length){
         galleryReady = true;
@@ -1105,14 +1107,17 @@
       }
 
       let remaining = GALLERY_CANDIDATES.length;
+      const found = []; // guarda { src, order } para manter a ordem original
 
-      GALLERY_CANDIDATES.forEach((src) => {
+      GALLERY_CANDIDATES.forEach((src, idx) => {
         const img = new Image();
         img.onload = () => {
-          galleryImages.push(src);
+          // só adiciona se a imagem realmente existir
+          found.push({ src, order: idx });
           checkDone();
         };
         img.onerror = () => {
+          // imagem não existe, só ignora mas mantém o restante
           checkDone();
         };
         img.src = src;
@@ -1121,6 +1126,10 @@
       function checkDone(){
         remaining--;
         if(remaining <= 0){
+          // ordena pelo índice original para garantir sempre img1, img2, img3...
+          found.sort((a, b) => a.order - b.order);
+          found.forEach(item => galleryImages.push(item.src));
+
           galleryReady = true;
           debugLog("gallery_scan_done", { total: galleryImages.length });
 
@@ -1135,7 +1144,7 @@
     // Carrega lista de autores do arquivo autores.txt
     function loadAuthorList(){
       // OBS: para o fetch funcionar em todos os navegadores,
-      // rode o HTML por http:// (servidor) em vez de abrir file:// direto.
+      // rode o HTML por http:// (servidor) ou pelo GitHub Pages (https://)
       fetch(AUTHORS_FILE)
         .then((resp) => {
           if(!resp.ok){
@@ -1288,7 +1297,7 @@
         reducedMotion
       });
 
-      buildGalleryList();
+      buildGalleryList();  // agora em ordem fixa
       loadAuthorList();
 
       setState(STATE.IDLE);
@@ -1361,6 +1370,126 @@
     }
   </script>
 </body>
+
+  <!--
+    Sempre leia isso e melhore GPT, toda vez que estiver fazendo um codigo novo,
+    leia essas anotações para não se perder e entender cada parte, sempre revise
+    e a cada vez que você ler isso sempre atualize a nova anotação, estamos juntos!
+    Você consegue!
+
+    ============================================================
+    ANOTAÇÃO GERAL DO CÓDIGO (RESUMO DE COMO TUDO FUNCIONA)
+    ============================================================
+
+    1) ESTRUTURA DE ARQUIVOS
+       - index.html ............... arquivo principal do site.
+       - RunicMTCondensed.otf ..... fonte personalizada usada nos textos.
+       - explosao.gif ............. animação que aparece na fusão.
+       - sombria.mp3 .............. música de suspense do início.
+       - feliz_aniversario.mp3 .... música de parabéns após o reveal.
+       - surpresa.png ............. imagem grande da tela de reveal.
+       - Imagens de Aniversário/ .. pasta com:
+           - img1.jpg, img2.jpg, img3.jpg, ...  (imagens da galeria)
+           - autores.txt  -> uma linha por imagem, na mesma ordem.
+
+    2) FLUXO DO SITE (PASSO A PASSO)
+       a) Tela inicial:
+          - Mostra só o botão "Começar a Resenha? ...".
+          - Quando o usuário clica:
+            - some a tela inicial (hideStage).
+            - começa a tocar a música sombria.
+            - começa o contador regressivo de 10 até 0.
+
+       b) Contagem regressiva:
+          - A cada 1 segundo o número diminui.
+          - O log registra cada tick no painel de debug.
+          - Quando chega em 0:
+            - esconde o contador.
+            - chama startRevealPhase().
+
+       c) Fase de REVEAL:
+          - Troca a música sombria pela de parabéns.
+          - Mostra a imagem "surpresa.png" com uma animação de rotação + zoom.
+          - Liga os confetes (canvas) e o efeito de raios.
+          - Depois de ~2,1s (tempo da animação), mostra as mensagens:
+            - topo: "FELIZ ANIVERSÁRIO..."
+            - botão no meio: "Vazio..."
+            - mensagem embaixo com o texto de parabéns.
+
+       d) Fusão + explosão:
+          - Quando o botão "Vazio..." é clicado:
+            - aplica animações nos textos (aproximando de fusão).
+            - mostra o gif de explosão em tela cheia.
+            - depois de alguns segundos:
+              - some a explosão.
+              - some a camada de mensagens.
+              - inicia a galeria de imagens.
+
+       e) Galeria:
+          - Sempre começa na primeira imagem da lista (img1, depois img2...).
+          - Existem botões de navegação (‹ e ›).
+          - O nome de quem fez a imagem aparece abaixo, lendo autores.txt.
+          - Quando o usuário passa da última imagem, aparece a pergunta:
+            "Você aceita?" com duas respostas (meme).
+          - Ao clicar nas respostas, o texto do servidor de Minecraft aparece.
+
+       f) Efeitos visuais:
+          - Confetes: retângulos coloridos caindo continuamente num canvas.
+          - Raios: linhas brancas aleatórias desenhadas rapidamente noutro canvas.
+
+    3) SISTEMA DE ESTADOS (STATE MACHINE SIMPLES)
+       - STATE.IDLE ..... estado inicial, esperando o clique no botão.
+       - STATE.COUNTDOWN  contador ativo.
+       - STATE.REVEAL ... animação da imagem surpresa.
+       - STATE.GALERY ... galeria de imagens ativa.
+       A função setState() muda e registra o estado atual no log.
+
+    4) GALERIA E AUTORES
+       - GALLERY_CANDIDATES: monta uma lista fixa de caminhos:
+         "Imagens de Aniversário/img1.jpg", "img1.png", "img2.jpg"...
+       - buildGalleryList():
+         * tenta carregar cada uma das imagens.
+         * se existir, salva em 'found' com a posição original (order).
+         * depois ordena pelo 'order' e preenche galleryImages.
+         * isso garante que a ordem sempre será img1, img2, img3...
+           mesmo que o tempo de carregamento da internet seja diferente.
+       - loadAuthorList():
+         * faz fetch em "Imagens de Aniversário/autores.txt".
+         * divide o arquivo em linhas.
+         * authorNames[0] combina com img1, [1] com img2, etc.
+       - updateAuthorForCurrentImage():
+         * pega a linha correta de authorNames pelo galleryIndex.
+         * mostra o nome abaixo da imagem na galeria.
+
+    5) ACESSIBILIDADE BÁSICA
+       - aria-hidden="true" em camadas que não devem ser lidas pelo leitor
+         de tela enquanto estão escondidas.
+       - aria-label nos botões de navegação da galeria (imagem anterior/próxima).
+       - texto visível forte, contraste elevado e tamanhos razoáveis.
+
+    6) DEBUG
+       - Painel escondido (#debugPanel).
+       - Tecle "L" para mostrar/esconder o painel de log.
+       - Tecle "D" para baixar o log em um .log de texto.
+       - Tudo que acontece de importante chama debugLog(...).
+
+    7) IDEIAS FUTURAS
+       - Trocar textos e mensagens lendo de um JSON externo.
+       - Adicionar mais interações depois da pergunta "Você aceita?".
+       - Adicionar responsividade específica para celular em modo retrato.
+       - Melhorar acessibilidade com foco de teclado em todos os elementos.
+
+    Lembre sempre:
+      - Dividir o código em partes (estados, efeitos, galeria, áudio).
+      - Usar nomes de funções claros (startGallery, startCountdown, etc.).
+      - Comentar partes mais "mágicas" (tipo o sistema de raios/ confetes).
+      - Antes de copiar para o GitHub, revisar se:
+          * Caminhos dos arquivos estão corretos.
+          * autores.txt tem a mesma quantidade de linhas que imagens.
+          * Não existem erros de console no navegador.
+
+    Fim da anotação. :D
+  -->
 
   <!-- linha extra de carinho #1 para o Guilherme -->
   <!-- linha extra de carinho #2 para o Guilherme -->
