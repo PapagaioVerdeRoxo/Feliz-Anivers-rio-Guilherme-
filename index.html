@@ -444,6 +444,17 @@
       background: rgba(0,0,0,0.25);
     }
 
+    /* vídeo na galeria segue a mesma ideia visual da imagem
+       (mantém sombra, tamanho máximo etc.) */
+    .gallery-video{
+      max-width: min(96vw, 1250px);
+      max-height: min(88vh, 760px);
+      border-radius: 18px;
+      box-shadow: 0 26px 70px rgba(0,0,0,0.9);
+      background: #000;
+      outline: none;
+    }
+
     .image-author{
       font-size: 22px;
       font-weight: 800;
@@ -652,6 +663,11 @@
         max-height: 60vh;
       }
 
+      /* vídeo também respeita o limite de altura em mobile */
+      .gallery-video{
+        max-height: 60vh;
+      }
+
       /* setas empilhadas (topo e base) para ficarem 100% clicáveis */
       .gallery-nav{
         position: static;
@@ -701,6 +717,8 @@
 
     <div class="gallery-main">
       <img src="" alt="Memória de aniversário" id="galleryImage" class="gallery-image" />
+      <!-- elemento de vídeo para a galeria, controlado via JS -->
+      <video id="galleryVideo" class="gallery-video hidden" controls preload="metadata"></video>
       <p id="imageAuthor" class="image-author hidden"></p>
 
       <div id="questionSection" class="question hidden">
@@ -754,6 +772,7 @@
 
     const galleryEl      = document.getElementById("gallery");
     const galleryImgEl   = document.getElementById("galleryImage");
+    const galleryVideoEl = document.getElementById("galleryVideo");
     const galleryPrev    = document.getElementById("galleryPrev");
     const galleryNext    = document.getElementById("galleryNext");
 
@@ -778,19 +797,43 @@
       explosionVisibleMs: 6000  // tempo que a explosão fica na tela
     };
 
-    // Arquivo de nomes dos amigos (um por linha, na ordem das imagens)
+    // Arquivo de nomes dos amigos (um por linha, na ordem das mídias da galeria)
+    // A ordem final da galeria é baseada APENAS no número do arquivo:
+    // 1.png, 2.mp4, 3.png, 4.webm, etc.
     const AUTHORS_FILE = "Imagens de Aniversário/autores.txt";
     let authorNames = [];
     let authorsLoaded = false;
 
-    // Lista de candidatos da galeria (ordem fixa: img1.jpg, img1.png, img2.jpg, img2.png, ...)
-    const GALLERY_CANDIDATES = [];
-    for(let i = 1; i <= 20; i++){
-      GALLERY_CANDIDATES.push(`Imagens de Aniversário/img${i}.jpg`);
-      GALLERY_CANDIDATES.push(`Imagens de Aniversário/img${i}.png`);
-    }
+    // ============================================================
+    // NOVA REGRA DA GALERIA:
+    // - Os arquivos da pasta "Imagens de Aniversário" vão se chamar:
+    //   1.png, 2.mp4, 3.jpg, 4.webp, 5.mp4 ...
+    // - O que define a ordem é o NÚMERO (1, 2, 3, 4...), não a extensão.
+    // - Cada número representa UMA mídia (imagem OU vídeo).
+    // - Se mais de uma extensão existir para o mesmo número, vale a primeira
+    //   da lista MEDIA_EXTENSIONS abaixo.
+    // ============================================================
 
-    const galleryImages = [];   // imagens válidas encontradas (ordem preservada)
+    // Máximo de números que o script vai procurar (pode aumentar se quiser).
+    const MAX_MEDIA_NUMBER = 50;
+
+    // Ordem de prioridade das extensões para um mesmo número.
+    // O primeiro que existir é o que entra na galeria.
+    const MEDIA_EXTENSIONS = [
+      { type: "image", ext: "png"  },
+      { type: "image", ext: "jpg"  },
+      { type: "image", ext: "jpeg"},
+      { type: "image", ext: "gif"  },
+      { type: "image", ext: "webp" },
+      { type: "video", ext: "mp4"  },
+      { type: "video", ext: "webm" },
+      { type: "video", ext: "ogg"  }
+    ];
+
+    // Lista final de mídias (imagens + vídeos) na ORDEM NUMÉRICA
+    // Exemplo: [{ type: "image", src: "Imagens de Aniversário/1.png", number: 1 }, ...]
+    const galleryMedia  = [];
+
     let galleryReady = false;   // se a varredura já terminou
     let galleryStartQueued = false;
 
@@ -1024,8 +1067,8 @@
         return;
       }
 
-      if(!galleryImages || !galleryImages.length){
-        debugLog("gallery_no_images");
+      if(!galleryMedia || !galleryMedia.length){
+        debugLog("gallery_no_media");
         return;
       }
 
@@ -1036,7 +1079,7 @@
         galleryEl.setAttribute("aria-hidden", "false");
       }
 
-      debugLog("gallery_start", { total: galleryImages.length });
+      debugLog("gallery_start", { total: galleryMedia.length });
       showGalleryImage(0);
     }
 
@@ -1048,13 +1091,16 @@
       if(galleryImgEl){
         galleryImgEl.classList.remove("hidden");
       }
+      if(galleryVideoEl){
+        galleryVideoEl.classList.remove("hidden");
+      }
       if(serverInfo){
         serverInfo.classList.add("hidden");
       }
       if(imageAuthorEl){
         imageAuthorEl.classList.remove("hidden");
       }
-      if(galleryNext && galleryImages.length > 1){
+      if(galleryNext && galleryMedia.length > 1){
         galleryNext.classList.remove("hidden");
       }
       debugLog("question_hide");
@@ -1064,6 +1110,9 @@
       questionMode = true;
       if(galleryImgEl){
         galleryImgEl.classList.add("hidden");
+      }
+      if(galleryVideoEl){
+        galleryVideoEl.classList.add("hidden");
       }
       if(imageAuthorEl){
         imageAuthorEl.classList.add("hidden");
@@ -1077,7 +1126,7 @@
       debugLog("question_show");
     }
 
-    // Atualiza o nome do amigo para a imagem atual, usando autores.txt
+    // Atualiza o nome do amigo para a mídia atual (imagem ou vídeo), usando autores.txt
     function updateAuthorForCurrentImage(){
       if(!imageAuthorEl){
         return;
@@ -1103,25 +1152,61 @@
       }
     }
 
-    function showGalleryImage(index){
-      if(!galleryImages || !galleryImages.length) return;
-      if(!galleryImgEl) return;
+    // Mostra a mídia (imagem ou vídeo) na posição pedida
+    function showGalleryItem(index){
+      if(!galleryMedia || !galleryMedia.length) return;
+      if(!galleryImgEl || !galleryVideoEl) return;
 
       hideQuestion();
 
-      if(index < 0 || index >= galleryImages.length){
+      if(index < 0 || index >= galleryMedia.length){
         return;
       }
 
       galleryIndex = index;
-      const src = galleryImages[galleryIndex];
-      galleryImgEl.src = src;
-      debugLog("gallery_image", { index: galleryIndex, src });
+      const item = galleryMedia[galleryIndex];
+
+      // reseta ambos e decide o que mostrar
+      galleryImgEl.classList.add("hidden");
+      galleryVideoEl.classList.add("hidden");
+
+      // pausa vídeo se estiver tocando
+      try{
+        galleryVideoEl.pause();
+      }catch(e){
+        // ignore
+      }
+
+      if(item.type === "image"){
+        galleryImgEl.src = item.src;
+        galleryImgEl.alt = `Memória de aniversário - imagem ${item.number}`;
+        galleryImgEl.classList.remove("hidden");
+        debugLog("gallery_image", { index: galleryIndex, src: item.src, number: item.number });
+      }else if(item.type === "video"){
+        galleryVideoEl.src = item.src;
+        galleryVideoEl.classList.remove("hidden");
+        galleryVideoEl.setAttribute("playsinline", "playsinline");
+        galleryVideoEl.setAttribute("controls", "controls");
+        galleryVideoEl.alt = `Memória de aniversário - vídeo ${item.number}`;
+        debugLog("gallery_video", { index: galleryIndex, src: item.src, number: item.number });
+        const playPromise = galleryVideoEl.play();
+        if(playPromise && typeof playPromise.then === "function"){
+          playPromise.then(() => {
+            debugLog("gallery_video_play_ok", { index: galleryIndex });
+          }).catch((err) => {
+            debugLog("gallery_video_play_blocked", {
+              index: galleryIndex,
+              name: err && err.name,
+              message: err && err.message
+            });
+          });
+        }
+      }
 
       updateAuthorForCurrentImage();
 
       if(galleryPrev && galleryNext){
-        if(galleryImages.length <= 1){
+        if(galleryMedia.length <= 1){
           galleryPrev.classList.add("hidden");
           galleryNext.classList.add("hidden");
         }else{
@@ -1131,7 +1216,7 @@
             galleryPrev.classList.remove("hidden");
           }
 
-          if(galleryIndex >= galleryImages.length - 1){
+          if(galleryIndex >= galleryMedia.length - 1){
             galleryNext.classList.remove("hidden"); // next vai pra pergunta
           }else{
             galleryNext.classList.remove("hidden");
@@ -1140,46 +1225,103 @@
       }
     }
 
-    // ====== GALERIA EM ORDEM FIXA ======
+    // Mantém a função antiga chamando a nova (compatibilidade com o resto do código)
+    function showGalleryImage(index){
+      showGalleryItem(index);
+    }
+
+    // ====== GALERIA EM ORDEM NUMÉRICA (APENAS NÚMERO DO ARQUIVO) ======
     function buildGalleryList(){
-      if(!GALLERY_CANDIDATES || !GALLERY_CANDIDATES.length){
-        galleryReady = true;
-        debugLog("gallery_scan_none");
-        return;
+      const foundMedia = [];
+      let pendingChecks = 0;
+
+      function registerResult(number, type, src){
+        foundMedia.push({ number, type, src });
+        debugLog("media_found", { number, type, src });
       }
 
-      let remaining = GALLERY_CANDIDATES.length;
-      const found = []; // guarda { src, order } para manter a ordem original
-
-      GALLERY_CANDIDATES.forEach((src, idx) => {
-        const img = new Image();
-        img.onload = () => {
-          // só adiciona se a imagem realmente existir
-          found.push({ src, order: idx });
-          checkDone();
-        };
-        img.onerror = () => {
-          // imagem não existe, só ignora mas mantém o restante
-          checkDone();
-        };
-        img.src = src;
-      });
-
       function checkDone(){
-        remaining--;
-        if(remaining <= 0){
-          // ordena pelo índice original para garantir sempre img1, img2, img3...
-          found.sort((a, b) => a.order - b.order);
-          found.forEach(item => galleryImages.push(item.src));
+        pendingChecks--;
+        if(pendingChecks <= 0){
+          // quando todas as tentativas terminarem, ordena por número
+          foundMedia.sort((a, b) => a.number - b.number);
+          foundMedia.forEach((item) => {
+            galleryMedia.push({
+              type: item.type,
+              src:  item.src,
+              number: item.number
+            });
+          });
 
           galleryReady = true;
-          debugLog("gallery_scan_done", { total: galleryImages.length });
+          debugLog("gallery_scan_done_numeric", {
+            totalMedia: galleryMedia.length,
+            lastNumberChecked: MAX_MEDIA_NUMBER
+          });
 
           if(galleryStartQueued){
             galleryStartQueued = false;
             startGallery();
           }
         }
+      }
+
+      // se não houver nenhum número configurado, termina rápido
+      if(MAX_MEDIA_NUMBER <= 0){
+        galleryReady = true;
+        debugLog("gallery_no_numbers_configured");
+        return;
+      }
+
+      for(let num = 1; num <= MAX_MEDIA_NUMBER; num++){
+        let mediaFoundForThisNumber = false;
+
+        MEDIA_EXTENSIONS.forEach((def) => {
+          const src = `Imagens de Aniversário/${num}.${def.ext}`;
+          pendingChecks++;
+
+          if(def.type === "image"){
+            const img = new Image();
+            img.onload = () => {
+              if(!mediaFoundForThisNumber){
+                mediaFoundForThisNumber = true;
+                registerResult(num, "image", src);
+              }
+              checkDone();
+            };
+            img.onerror = () => {
+              checkDone();
+            };
+            img.src = src;
+          }else if(def.type === "video"){
+            const videoProbe = document.createElement("video");
+
+            // só precisamos saber se o arquivo existe / carrega metadados,
+            // não vamos exibir esse elemento de teste.
+            videoProbe.onloadeddata = () => {
+              if(!mediaFoundForThisNumber){
+                mediaFoundForThisNumber = true;
+                registerResult(num, "video", src);
+              }
+              checkDone();
+            };
+            videoProbe.onerror = () => {
+              checkDone();
+            };
+            videoProbe.src = src;
+            // força o navegador a tentar carregar as infos do vídeo
+            videoProbe.load();
+          }else{
+            // tipo desconhecido (não deveria acontecer, mas já loga)
+            debugLog("media_type_unknown", { number: num, def });
+            checkDone();
+          }
+        });
+      }
+
+      if(pendingChecks === 0){
+        galleryReady = true;
+        debugLog("gallery_no_candidates_to_check");
       }
     }
 
@@ -1195,13 +1337,18 @@
           return resp.text();
         })
         .then((text) => {
-          // Mantém todas as linhas, inclusive vazias, pra preservar o índice
+          // Mantém todas as linhas, inclusive vazias, pra preservar o índice.
+          // Cada linha representa uma mídia da galeria, na ORDEM NUMÉRICA:
+          // linha 0 -> arquivo cujo nome é 1 (1.png, 1.mp4, ...)
+          // linha 1 -> arquivo cujo nome é 2
+          // linha 2 -> arquivo cujo nome é 3
+          // e assim por diante.
           authorNames = text.split(/\r?\n/);
           authorsLoaded = true;
           debugLog("authors_loaded", { total: authorNames.length });
 
-          // Se a galeria já estiver sendo exibida, atualiza o autor da imagem atual
-          if(currentState === STATE.GALERY && galleryImages.length > 0){
+          // Se a galeria já estiver sendo exibida, atualiza o autor da mídia atual
+          if(currentState === STATE.GALERY && galleryMedia.length > 0){
             updateAuthorForCurrentImage();
           }
         })
@@ -1339,7 +1486,8 @@
         reducedMotion
       });
 
-      buildGalleryList();  // agora em ordem fixa
+      // monta a galeria seguindo a regra dos números (1.png, 2.mp4, 3.jpg, ...)
+      buildGalleryList();
       loadAuthorList();
 
       setState(STATE.IDLE);
@@ -1370,7 +1518,7 @@
       galleryPrev.addEventListener("click", () => {
         if(questionMode){
           hideQuestion();
-          showGalleryImage(galleryImages.length - 1);
+          showGalleryImage(galleryMedia.length - 1);
           return;
         }
         showGalleryImage(galleryIndex - 1);
@@ -1379,13 +1527,13 @@
 
     if(galleryNext){
       galleryNext.addEventListener("click", () => {
-        if(!galleryImages || !galleryImages.length) return;
+        if(!galleryMedia || !galleryMedia.length) return;
 
         if(questionMode){
           return;
         }
 
-        if(galleryIndex >= galleryImages.length - 1){
+        if(galleryIndex >= galleryMedia.length - 1){
           showQuestion();
         }else{
           showGalleryImage(galleryIndex + 1);
@@ -1429,8 +1577,15 @@
        - feliz_aniversario.mp3 .... música de parabéns após o reveal.
        - surpresa.png ............. imagem grande da tela de reveal.
        - Imagens de Aniversário/ .. pasta com:
-           - img1.jpg, img2.jpg, img3.jpg, ...  (imagens da galeria)
-           - autores.txt  -> uma linha por imagem, na mesma ordem.
+           - 1.png, 2.mp4, 3.jpg, 4.webp, ...  (mídias da galeria)
+             * o nome é APENAS o número (1, 2, 3, ...);
+             * a extensão pode ser imagem (png/jpg/jpeg/gif/webp)
+               ou vídeo (mp4/webm/ogg).
+           - autores.txt  -> uma linha por mídia, na ordem numérica:
+                            linha 1 = autor do arquivo "1.*"
+                            linha 2 = autor do arquivo "2.*"
+                            linha 3 = autor do arquivo "3.*"
+                            ...
 
     2) FLUXO DO SITE (PASSO A PASSO)
        a) Tela inicial:
@@ -1463,13 +1618,21 @@
             - depois de alguns segundos:
               - some a explosão.
               - some a camada de mensagens.
-              - inicia a galeria de imagens.
+              - inicia a galeria de mídias (imagens + vídeos).
 
        e) Galeria:
-          - Sempre começa na primeira imagem da lista (img1, depois img2...).
+          - A ordem das mídias é 100% baseada no NÚMERO do arquivo:
+            1.*, 2.*, 3.*, 4.*, 5.*, ...
+          - Para cada número N, o código tenta encontrar:
+            N.png, N.jpg, N.jpeg, N.gif, N.webp, N.mp4, N.webm, N.ogg.
+            O primeiro que existir (na ordem acima) entra na galeria.
           - Existem botões de navegação (‹ e ›).
-          - O nome de quem fez a imagem aparece abaixo, lendo autores.txt.
-          - Quando o usuário passa da última imagem, aparece a pergunta:
+          - O nome de quem fez cada mídia aparece abaixo, lendo autores.txt:
+            * linha 0 -> arquivo "1.*"
+            * linha 1 -> arquivo "2.*"
+            * linha 2 -> arquivo "3.*"
+            * etc.
+          - Quando o usuário passa da última mídia, aparece a pergunta:
             "Você aceita?" com duas respostas (meme).
           - Ao clicar nas respostas, o texto do servidor de Minecraft aparece.
 
@@ -1481,31 +1644,36 @@
        - STATE.IDLE ..... estado inicial, esperando o clique no botão.
        - STATE.COUNTDOWN  contador ativo.
        - STATE.REVEAL ... animação da imagem surpresa.
-       - STATE.GALERY ... galeria de imagens ativa.
+       - STATE.GALERY ... galeria de mídias (imagens + vídeos) ativa.
        A função setState() muda e registra o estado atual no log.
 
-    4) GALERIA E AUTORES
-       - GALLERY_CANDIDATES: monta uma lista fixa de caminhos:
-         "Imagens de Aniversário/img1.jpg", "img1.png", "img2.jpg"...
+    4) GALERIA, AUTORES E REGRA NUMÉRICA
+       - MAX_MEDIA_NUMBER define até que número o script tenta procurar
+         arquivos (1 até MAX_MEDIA_NUMBER).
+       - MEDIA_EXTENSIONS define a ordem de prioridade das extensões
+         para cada número (primeiro imagens, depois vídeos).
        - buildGalleryList():
-         * tenta carregar cada uma das imagens.
-         * se existir, salva em 'found' com a posição original (order).
-         * depois ordena pelo 'order' e preenche galleryImages.
-         * isso garante que a ordem sempre será img1, img2, img3...
-           mesmo que o tempo de carregamento da internet seja diferente.
+         * para cada número N (1..MAX_MEDIA_NUMBER):
+             - monta caminhos "Imagens de Aniversário/N.ext";
+             - testa cada extensão com Image() (para imagens) ou
+               um <video> de teste (para vídeos);
+             - ao encontrar a primeira mídia existente, registra
+               { number: N, type: "image"/"video", src }.
+         * ao final, ordena tudo por number e preenche galleryMedia.
        - loadAuthorList():
-         * faz fetch em "Imagens de Aniversário/autores.txt".
-         * divide o arquivo em linhas.
-         * authorNames[0] combina com img1, [1] com img2, etc.
+         * faz fetch em "Imagens de Aniversário/autores.txt";
+         * authorNames[0] combina com o arquivo "1.*",
+           authorNames[1] com "2.*", etc.
        - updateAuthorForCurrentImage():
-         * pega a linha correta de authorNames pelo galleryIndex.
-         * mostra o nome abaixo da imagem na galeria.
+         * pega a linha correta de authorNames pelo galleryIndex;
+         * mostra o nome abaixo da mídia atual na galeria.
 
     5) ACESSIBILIDADE BÁSICA
        - aria-hidden="true" em camadas que não devem ser lidas pelo leitor
          de tela enquanto estão escondidas.
        - aria-label nos botões de navegação da galeria (imagem anterior/próxima).
-       - texto visível forte, contraste elevado e tamanhos razoáveis.
+       - contraste elevado e tamanhos razoáveis.
+       - vídeo usa controls para permitir pausar/retomar facilmente.
 
     6) DEBUG
        - Painel escondido (#debugPanel).
@@ -1520,7 +1688,7 @@
          * textos (msgTop/msgBottom) com white-space: normal e padding lateral
            para não ficarem cortados.
          * galeria em coluna (flex-direction: column), com padding vertical
-           e a imagem menor (max-height: 60vh).
+           e a mídia menor (max-height: 60vh).
          * setas da galeria em posição "static", empilhadas em cima/baixo
            para sempre ficarem visíveis e clicáveis em modo retrato.
 
@@ -1529,10 +1697,14 @@
        - Adicionar mais interações depois da pergunta "Você aceita?".
        - Melhorar ainda mais a responsividade para tablets/monitores ultra-wide.
        - Melhorar acessibilidade com foco de teclado em todos os elementos.
+       - Adicionar suporte a legendas de vídeo (track .vtt) para acessibilidade.
+       - Permitir configurações de MAX_MEDIA_NUMBER e MEDIA_EXTENSIONS
+         lendo de um arquivo externo (ex: JSON).
 
     Checklist antes de subir pro GitHub:
        - Caminhos dos arquivos estão corretos?
-       - autores.txt tem a mesma quantidade de linhas que imagens?
+       - autores.txt tem a mesma quantidade de linhas que mídias (1.*, 2.*, 3.*, ... que realmente existem)?
+       - Os arquivos numéricos (1.png, 2.mp4, 3.jpg, ...) estão na pasta "Imagens de Aniversário"?
        - Não existem erros de console no navegador?
   -->
 
@@ -1540,6 +1712,7 @@
   <!-- linha extra de carinho #1 para o Guilherme -->
   <!-- linha extra de carinho #2 para o Guilherme -->
   <!-- linha extra de carinho #3 para o Guilherme -->
+  <!-- linha extra de carinho #4 para o Guilherme (agora com vídeo e ordem numérica!) -->
   <!-- ... pode continuar daí pra frente :) ... -->
 </body>
 </html>
