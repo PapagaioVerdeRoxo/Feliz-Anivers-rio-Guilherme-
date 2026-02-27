@@ -444,8 +444,6 @@
       background: rgba(0,0,0,0.25);
     }
 
-    /* vídeo na galeria segue a mesma ideia visual da imagem
-       (mantém sombra, tamanho máximo etc.) */
     .gallery-video{
       max-width: min(96vw, 1250px);
       max-height: min(88vh, 760px);
@@ -606,7 +604,6 @@
        13) MOBILE (somente ajustes para celular)
        ============================================================ */
     @media(max-width: 520px){
-      /* deixa o conteúdo poder rolar um pouco no celular */
       html, body{
         height: 100%;
         overflow-y: auto;
@@ -621,7 +618,6 @@
         padding: 16px 24px;
       }
 
-      /* textos quebram linha para não cortar */
       .msgTop,
       .msgBottom{
         white-space: normal;
@@ -646,7 +642,6 @@
         font-size: 18px;
       }
 
-      /* galeria em coluna e com padding para setas não ficarem na borda da tela */
       .gallery{
         flex-direction: column;
         align-items: center;
@@ -658,17 +653,14 @@
         width: 100%;
       }
 
-      /* imagem um pouco menor pra caber tudo em retrato */
       .gallery-image{
         max-height: 60vh;
       }
 
-      /* vídeo também respeita o limite de altura em mobile */
       .gallery-video{
         max-height: 60vh;
       }
 
-      /* setas empilhadas (topo e base) para ficarem 100% clicáveis */
       .gallery-nav{
         position: static;
         margin: 4px 0;
@@ -717,7 +709,6 @@
 
     <div class="gallery-main">
       <img src="" alt="Memória de aniversário" id="galleryImage" class="gallery-image" />
-      <!-- elemento de vídeo para a galeria, controlado via JS -->
       <video id="galleryVideo" class="gallery-video hidden" controls preload="metadata"></video>
       <p id="imageAuthor" class="image-author hidden"></p>
 
@@ -794,31 +785,18 @@
       sombreVolume: 1.0,
       parabensVolume: 1.0,
       revealDurationMs: 2100,
-      explosionVisibleMs: 6000  // tempo que a explosão fica na tela
+      explosionVisibleMs: 6000
     };
 
-    // Arquivo de nomes dos amigos (um por linha, na ordem das mídias da galeria)
-    // A ordem final da galeria é baseada APENAS no número do arquivo:
-    // 1.png, 2.mp4, 3.png, 4.webm, etc.
     const AUTHORS_FILE = "Imagens de Aniversário/autores.txt";
     let authorNames = [];
     let authorsLoaded = false;
 
     // ============================================================
-    // NOVA REGRA DA GALERIA:
-    // - Os arquivos da pasta "Imagens de Aniversário" vão se chamar:
-    //   1.png, 2.mp4, 3.jpg, 4.webp, 5.mp4 ...
-    // - O que define a ordem é o NÚMERO (1, 2, 3, 4...), não a extensão.
-    // - Cada número representa UMA mídia (imagem OU vídeo).
-    // - Se mais de uma extensão existir para o mesmo número, vale a primeira
-    //   da lista MEDIA_EXTENSIONS abaixo.
+    // REGRA NUMÉRICA DA GALERIA
     // ============================================================
-
-    // Máximo de números que o script vai procurar (pode aumentar se quiser).
     const MAX_MEDIA_NUMBER = 50;
 
-    // Ordem de prioridade das extensões para um mesmo número.
-    // O primeiro que existir é o que entra na galeria.
     const MEDIA_EXTENSIONS = [
       { type: "image", ext: "png"  },
       { type: "image", ext: "jpg"  },
@@ -830,11 +808,9 @@
       { type: "video", ext: "ogg"  }
     ];
 
-    // Lista final de mídias (imagens + vídeos) na ORDEM NUMÉRICA
-    // Exemplo: [{ type: "image", src: "Imagens de Aniversário/1.png", number: 1 }, ...]
     const galleryMedia  = [];
 
-    let galleryReady = false;   // se a varredura já terminou
+    let galleryReady = false;
     let galleryStartQueued = false;
 
     const STATE = {
@@ -850,7 +826,6 @@
     let questionMode = false;
     let lightningLoopStarted = false;
 
-    // ========== SISTEMA DE LOG / DEBUG ==========
     const DEBUG = {
       buffer: [],
       panel: null,
@@ -925,7 +900,6 @@
       debugLog("state_change", { state: st });
     }
 
-    // ========== ÁUDIO SEGURO ==========
     function safePlay(audio, volume){
       if(!audio) return;
       audio.volume = volume;
@@ -951,7 +925,6 @@
       debugLog("audio_stop", { id: audio.id });
     }
 
-    // ========== AJUDA VISUAL ==========
     function showCountdown(){
       countdownEl.classList.add("show");
     }
@@ -996,7 +969,6 @@
       }, 700);
     }
 
-    // ========== FASE DE REVEAL (DEPOIS DO CONTADOR) ==========
     function startRevealPhase(){
       setState(STATE.REVEAL);
 
@@ -1004,12 +976,9 @@
       safePlay(audioParabens, CONFIG.parabensVolume);
 
       showReveal();
-
-      // confete e raios começam depois que o contador termina
       startConfetti();
       startLightningLoop();
 
-      // textos só aparecem quando a animação da imagem termina
       setTimeout(() => {
         showMessages();
       }, CONFIG.revealDurationMs);
@@ -1017,7 +986,6 @@
       debugLog("reveal_phase_start");
     }
 
-    // ========== CONTADOR ==========
     function startCountdown(){
       setState(STATE.COUNTDOWN);
 
@@ -1043,7 +1011,6 @@
       }, CONFIG.tickMs);
     }
 
-    // ========== FUSÃO + GALERIA ==========
     function startFusion(){
       if(!document.body.classList.contains("show-messages")) return;
 
@@ -1126,7 +1093,9 @@
       debugLog("question_show");
     }
 
-    // Atualiza o nome do amigo para a mídia atual (imagem ou vídeo), usando autores.txt
+    // ============================================================
+    // AUTOR DA MÍDIA (USANDO O NÚMERO DO ARQUIVO)
+    // ============================================================
     function updateAuthorForCurrentImage(){
       if(!imageAuthorEl){
         return;
@@ -1137,22 +1106,31 @@
         return;
       }
 
-      const nameRaw = authorNames[galleryIndex];
+      const currentItem = galleryMedia[galleryIndex];
+      if(!currentItem || typeof currentItem.number !== "number"){
+        imageAuthorEl.textContent = "";
+        imageAuthorEl.classList.add("hidden");
+        debugLog("author_no_item", { galleryIndex });
+        return;
+      }
+
+      const mediaNumber = currentItem.number;
+      const authorIndex = mediaNumber - 1; // linha 0 -> arquivo 1.*, linha 1 -> arquivo 2.*, etc.
+
+      const nameRaw = authorNames[authorIndex];
       const name = nameRaw ? String(nameRaw).trim() : "";
 
       if(name){
-        // sem "Feito por:" — só o nome
         imageAuthorEl.textContent = name;
         imageAuthorEl.classList.remove("hidden");
-        debugLog("author_set", { index: galleryIndex, name });
+        debugLog("author_set", { galleryIndex, mediaNumber, authorIndex, name });
       }else{
         imageAuthorEl.textContent = "";
         imageAuthorEl.classList.add("hidden");
-        debugLog("author_empty", { index: galleryIndex });
+        debugLog("author_empty", { galleryIndex, mediaNumber, authorIndex });
       }
     }
 
-    // Mostra a mídia (imagem ou vídeo) na posição pedida
     function showGalleryItem(index){
       if(!galleryMedia || !galleryMedia.length) return;
       if(!galleryImgEl || !galleryVideoEl) return;
@@ -1166,15 +1144,13 @@
       galleryIndex = index;
       const item = galleryMedia[galleryIndex];
 
-      // reseta ambos e decide o que mostrar
       galleryImgEl.classList.add("hidden");
       galleryVideoEl.classList.add("hidden");
 
-      // pausa vídeo se estiver tocando
       try{
         galleryVideoEl.pause();
       }catch(e){
-        // ignore
+        debugLog("video_pause_error", { message: e && e.message });
       }
 
       if(item.type === "image"){
@@ -1217,7 +1193,7 @@
           }
 
           if(galleryIndex >= galleryMedia.length - 1){
-            galleryNext.classList.remove("hidden"); // next vai pra pergunta
+            galleryNext.classList.remove("hidden");
           }else{
             galleryNext.classList.remove("hidden");
           }
@@ -1225,12 +1201,13 @@
       }
     }
 
-    // Mantém a função antiga chamando a nova (compatibilidade com o resto do código)
     function showGalleryImage(index){
       showGalleryItem(index);
     }
 
-    // ====== GALERIA EM ORDEM NUMÉRICA (APENAS NÚMERO DO ARQUIVO) ======
+    // ============================================================
+    // GALERIA EM ORDEM NUMÉRICA
+    // ============================================================
     function buildGalleryList(){
       const foundMedia = [];
       let pendingChecks = 0;
@@ -1243,7 +1220,6 @@
       function checkDone(){
         pendingChecks--;
         if(pendingChecks <= 0){
-          // quando todas as tentativas terminarem, ordena por número
           foundMedia.sort((a, b) => a.number - b.number);
           foundMedia.forEach((item) => {
             galleryMedia.push({
@@ -1266,7 +1242,6 @@
         }
       }
 
-      // se não houver nenhum número configurado, termina rápido
       if(MAX_MEDIA_NUMBER <= 0){
         galleryReady = true;
         debugLog("gallery_no_numbers_configured");
@@ -1277,6 +1252,11 @@
         let mediaFoundForThisNumber = false;
 
         MEDIA_EXTENSIONS.forEach((def) => {
+          if(mediaFoundForThisNumber){
+            // já achou a mídia para este número, não precisa testar outras extensões
+            return;
+          }
+
           const src = `Imagens de Aniversário/${num}.${def.ext}`;
           pendingChecks++;
 
@@ -1295,9 +1275,6 @@
             img.src = src;
           }else if(def.type === "video"){
             const videoProbe = document.createElement("video");
-
-            // só precisamos saber se o arquivo existe / carrega metadados,
-            // não vamos exibir esse elemento de teste.
             videoProbe.onloadeddata = () => {
               if(!mediaFoundForThisNumber){
                 mediaFoundForThisNumber = true;
@@ -1309,10 +1286,8 @@
               checkDone();
             };
             videoProbe.src = src;
-            // força o navegador a tentar carregar as infos do vídeo
             videoProbe.load();
           }else{
-            // tipo desconhecido (não deveria acontecer, mas já loga)
             debugLog("media_type_unknown", { number: num, def });
             checkDone();
           }
@@ -1325,10 +1300,7 @@
       }
     }
 
-    // Carrega lista de autores do arquivo autores.txt
     function loadAuthorList(){
-      // OBS: para o fetch funcionar em todos os navegadores,
-      // rode o HTML por http:// (servidor) ou pelo GitHub Pages (https://)
       fetch(AUTHORS_FILE)
         .then((resp) => {
           if(!resp.ok){
@@ -1337,17 +1309,10 @@
           return resp.text();
         })
         .then((text) => {
-          // Mantém todas as linhas, inclusive vazias, pra preservar o índice.
-          // Cada linha representa uma mídia da galeria, na ORDEM NUMÉRICA:
-          // linha 0 -> arquivo cujo nome é 1 (1.png, 1.mp4, ...)
-          // linha 1 -> arquivo cujo nome é 2
-          // linha 2 -> arquivo cujo nome é 3
-          // e assim por diante.
           authorNames = text.split(/\r?\n/);
           authorsLoaded = true;
           debugLog("authors_loaded", { total: authorNames.length });
 
-          // Se a galeria já estiver sendo exibida, atualiza o autor da mídia atual
           if(currentState === STATE.GALERY && galleryMedia.length > 0){
             updateAuthorForCurrentImage();
           }
@@ -1362,7 +1327,6 @@
         });
     }
 
-    // ========== CONFETES ==========
     const confettiCtx = confettiCanvas.getContext("2d");
     let confettiPieces = [];
     let confettiRunning = false;
@@ -1415,7 +1379,6 @@
       confettiLoop();
     }
 
-    // ========== RAIOS ==========
     const lightningCtx = lightningCanvas.getContext("2d");
 
     function resizeLightning(){
@@ -1468,7 +1431,6 @@
       }, 400);
     }
 
-    // ========== EVENTOS GLOBAIS ==========
     window.addEventListener("resize", () => {
       resizeConfetti();
       resizeLightning();
@@ -1486,7 +1448,6 @@
         reducedMotion
       });
 
-      // monta a galeria seguindo a regra dos números (1.png, 2.mp4, 3.jpg, ...)
       buildGalleryList();
       loadAuthorList();
 
@@ -1494,7 +1455,6 @@
       safePlay(audioSombrio, CONFIG.sombreVolume);
     });
 
-    // ========== EVENTOS DOS BOTÕES ==========
     startBtn.addEventListener("click", () => {
       if(currentState !== STATE.IDLE) return;
 
@@ -1505,7 +1465,6 @@
         safePlay(audioSombrio, CONFIG.sombreVolume);
       }
 
-      // confete agora começa só depois do contador (em startRevealPhase)
       startCountdown();
     });
 
@@ -1561,158 +1520,21 @@
   </script>
 
   <!--
-    Sempre leia isso e melhore GPT, toda vez que estiver fazendo um código novo,
-    leia essas anotações para não se perder e entender cada parte. Sempre revise
-    e, a cada vez que você ler isso, atualize a anotação. Bora evoluir! :D
-
-    ============================================================
-    ANOTAÇÃO GERAL DO CÓDIGO (RESUMO DE COMO TUDO FUNCIONA)
-    ============================================================
-
-    1) ESTRUTURA DE ARQUIVOS
-       - index.html ............... arquivo principal do site.
-       - RunicMTCondensed.otf ..... fonte personalizada usada nos textos.
-       - explosao.gif ............. animação que aparece na fusão.
-       - sombria.mp3 .............. música de suspense do início.
-       - feliz_aniversario.mp3 .... música de parabéns após o reveal.
-       - surpresa.png ............. imagem grande da tela de reveal.
-       - Imagens de Aniversário/ .. pasta com:
-           - 1.png, 2.mp4, 3.jpg, 4.webp, ...  (mídias da galeria)
-             * o nome é APENAS o número (1, 2, 3, ...);
-             * a extensão pode ser imagem (png/jpg/jpeg/gif/webp)
-               ou vídeo (mp4/webm/ogg).
-           - autores.txt  -> uma linha por mídia, na ordem numérica:
-                            linha 1 = autor do arquivo "1.*"
-                            linha 2 = autor do arquivo "2.*"
-                            linha 3 = autor do arquivo "3.*"
-                            ...
-
-    2) FLUXO DO SITE (PASSO A PASSO)
-       a) Tela inicial:
-          - Mostra só o botão "Começar a Resenha? ...".
-          - Quando o usuário clica:
-            - some a tela inicial (hideStage).
-            - começa a tocar a música sombria.
-            - começa o contador regressivo de 10 até 0.
-
-       b) Contagem regressiva:
-          - A cada 1 segundo o número diminui.
-          - O log registra cada tick no painel de debug.
-          - Quando chega em 0:
-            - esconde o contador.
-            - chama startRevealPhase().
-
-       c) Fase de REVEAL:
-          - Troca a música sombria pela de parabéns.
-          - Mostra a imagem "surpresa.png" com uma animação de rotação + zoom.
-          - Liga os confetes (canvas) e o efeito de raios.
-          - Depois de ~2,1s (tempo da animação), mostra as mensagens:
-            - topo: "FELIZ ANIVERSÁRIO..."
-            - botão no meio: "Vazio..."
-            - mensagem embaixo com o texto de parabéns.
-
-       d) Fusão + explosão:
-          - Quando o botão "Vazio..." é clicado:
-            - aplica animações nos textos (aproximando de fusão).
-            - mostra o gif de explosão em tela cheia.
-            - depois de alguns segundos:
-              - some a explosão.
-              - some a camada de mensagens.
-              - inicia a galeria de mídias (imagens + vídeos).
-
-       e) Galeria:
-          - A ordem das mídias é 100% baseada no NÚMERO do arquivo:
-            1.*, 2.*, 3.*, 4.*, 5.*, ...
-          - Para cada número N, o código tenta encontrar:
-            N.png, N.jpg, N.jpeg, N.gif, N.webp, N.mp4, N.webm, N.ogg.
-            O primeiro que existir (na ordem acima) entra na galeria.
-          - Existem botões de navegação (‹ e ›).
-          - O nome de quem fez cada mídia aparece abaixo, lendo autores.txt:
-            * linha 0 -> arquivo "1.*"
-            * linha 1 -> arquivo "2.*"
-            * linha 2 -> arquivo "3.*"
-            * etc.
-          - Quando o usuário passa da última mídia, aparece a pergunta:
-            "Você aceita?" com duas respostas (meme).
-          - Ao clicar nas respostas, o texto do servidor de Minecraft aparece.
-
-       f) Efeitos visuais:
-          - Confetes: retângulos coloridos caindo continuamente num canvas.
-          - Raios: linhas brancas aleatórias desenhadas rapidamente noutro canvas.
-
-    3) SISTEMA DE ESTADOS (STATE MACHINE SIMPLES)
-       - STATE.IDLE ..... estado inicial, esperando o clique no botão.
-       - STATE.COUNTDOWN  contador ativo.
-       - STATE.REVEAL ... animação da imagem surpresa.
-       - STATE.GALERY ... galeria de mídias (imagens + vídeos) ativa.
-       A função setState() muda e registra o estado atual no log.
-
-    4) GALERIA, AUTORES E REGRA NUMÉRICA
-       - MAX_MEDIA_NUMBER define até que número o script tenta procurar
-         arquivos (1 até MAX_MEDIA_NUMBER).
-       - MEDIA_EXTENSIONS define a ordem de prioridade das extensões
-         para cada número (primeiro imagens, depois vídeos).
-       - buildGalleryList():
-         * para cada número N (1..MAX_MEDIA_NUMBER):
-             - monta caminhos "Imagens de Aniversário/N.ext";
-             - testa cada extensão com Image() (para imagens) ou
-               um <video> de teste (para vídeos);
-             - ao encontrar a primeira mídia existente, registra
-               { number: N, type: "image"/"video", src }.
-         * ao final, ordena tudo por number e preenche galleryMedia.
-       - loadAuthorList():
-         * faz fetch em "Imagens de Aniversário/autores.txt";
-         * authorNames[0] combina com o arquivo "1.*",
-           authorNames[1] com "2.*", etc.
-       - updateAuthorForCurrentImage():
-         * pega a linha correta de authorNames pelo galleryIndex;
-         * mostra o nome abaixo da mídia atual na galeria.
-
-    5) ACESSIBILIDADE BÁSICA
-       - aria-hidden="true" em camadas que não devem ser lidas pelo leitor
-         de tela enquanto estão escondidas.
-       - aria-label nos botões de navegação da galeria (imagem anterior/próxima).
-       - contraste elevado e tamanhos razoáveis.
-       - vídeo usa controls para permitir pausar/retomar facilmente.
-
-    6) DEBUG
-       - Painel escondido (#debugPanel).
-       - Tecle "L" para mostrar/esconder o painel de log.
-       - Tecle "D" para baixar o log em um .log de texto.
-       - Tudo que acontece de importante chama debugLog(...).
-
-    7) RESPONSIVIDADE (MOBILE)
-       - A base do layout é fixa em tela cheia (layers com position: fixed).
-       - Para não quebrar no celular, o @media(max-width: 520px) faz:
-         * html/body com overflow-y: auto (permite um pouco de rolagem).
-         * textos (msgTop/msgBottom) com white-space: normal e padding lateral
-           para não ficarem cortados.
-         * galeria em coluna (flex-direction: column), com padding vertical
-           e a mídia menor (max-height: 60vh).
-         * setas da galeria em posição "static", empilhadas em cima/baixo
-           para sempre ficarem visíveis e clicáveis em modo retrato.
-
-    8) IDEIAS FUTURAS
-       - Trocar textos e mensagens lendo de um JSON externo.
-       - Adicionar mais interações depois da pergunta "Você aceita?".
-       - Melhorar ainda mais a responsividade para tablets/monitores ultra-wide.
-       - Melhorar acessibilidade com foco de teclado em todos os elementos.
-       - Adicionar suporte a legendas de vídeo (track .vtt) para acessibilidade.
-       - Permitir configurações de MAX_MEDIA_NUMBER e MEDIA_EXTENSIONS
-         lendo de um arquivo externo (ex: JSON).
-
-    Checklist antes de subir pro GitHub:
-       - Caminhos dos arquivos estão corretos?
-       - autores.txt tem a mesma quantidade de linhas que mídias (1.*, 2.*, 3.*, ... que realmente existem)?
-       - Os arquivos numéricos (1.png, 2.mp4, 3.jpg, ...) estão na pasta "Imagens de Aniversário"?
-       - Não existem erros de console no navegador?
+    ANOTAÇÃO EXTRA: autores.txt
+    - linha 0  -> arquivo "1.*"
+    - linha 1  -> arquivo "2.*"
+    - linha 2  -> arquivo "3.*"
+    - ...
+    O código agora usa SEMPRE o número da mídia (item.number) para
+    buscar o autor: authorNames[item.number - 1].
+    Assim não desincroniza mesmo que falte algum número (ex: não exista 2.*).
   -->
 
   <!-- linhas extras de carinho pro Guilherme -->
   <!-- linha extra de carinho #1 para o Guilherme -->
   <!-- linha extra de carinho #2 para o Guilherme -->
   <!-- linha extra de carinho #3 para o Guilherme -->
-  <!-- linha extra de carinho #4 para o Guilherme (agora com vídeo e ordem numérica!) -->
-  <!-- ... pode continuar daí pra frente :) ... -->
+  <!-- linha extra de carinho #4 para o Guilherme (com vídeos, jpeg/jpg e tudo alinhado!) -->
+  <!-- linha extra de carinho #5: você é muito amado, Guilherme -->
 </body>
 </html>
